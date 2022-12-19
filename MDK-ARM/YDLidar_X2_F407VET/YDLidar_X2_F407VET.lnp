@@ -1,0 +1,26 @@
+--cpu=Cortex-M4.fp.sp
+"ydlidar_x2_f407vet\startup_stm32f407xx.o"
+"ydlidar_x2_f407vet\main.o"
+"ydlidar_x2_f407vet\stm32f4xx_it.o"
+"ydlidar_x2_f407vet\stm32f4xx_hal_msp.o"
+"ydlidar_x2_f407vet\stm32f4xx_hal_tim.o"
+"ydlidar_x2_f407vet\stm32f4xx_hal_tim_ex.o"
+"ydlidar_x2_f407vet\stm32f4xx_hal_rcc.o"
+"ydlidar_x2_f407vet\stm32f4xx_hal_rcc_ex.o"
+"ydlidar_x2_f407vet\stm32f4xx_hal_flash.o"
+"ydlidar_x2_f407vet\stm32f4xx_hal_flash_ex.o"
+"ydlidar_x2_f407vet\stm32f4xx_hal_flash_ramfunc.o"
+"ydlidar_x2_f407vet\stm32f4xx_hal_gpio.o"
+"ydlidar_x2_f407vet\stm32f4xx_hal_dma_ex.o"
+"ydlidar_x2_f407vet\stm32f4xx_hal_dma.o"
+"ydlidar_x2_f407vet\stm32f4xx_hal_pwr.o"
+"ydlidar_x2_f407vet\stm32f4xx_hal_pwr_ex.o"
+"ydlidar_x2_f407vet\stm32f4xx_hal_cortex.o"
+"ydlidar_x2_f407vet\stm32f4xx_hal.o"
+"ydlidar_x2_f407vet\stm32f4xx_hal_exti.o"
+"ydlidar_x2_f407vet\stm32f4xx_hal_uart.o"
+"ydlidar_x2_f407vet\system_stm32f4xx.o"
+--strict --scatter "YDLidar_X2_F407VET\YDLidar_X2_F407VET.sct"
+--summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
+--info sizes --info totals --info unused --info veneers
+--list "YDLidar_X2_F407VET.map" -o YDLidar_X2_F407VET\YDLidar_X2_F407VET.axf
