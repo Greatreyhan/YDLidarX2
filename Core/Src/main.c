@@ -23,6 +23,9 @@
 /* USER CODE BEGIN Includes */
 
 #include <cmath>
+#include <string.h>
+#include <stdio.h>
+#include "lcd16x2_i2c.h"
 
 /* USER CODE END Includes */
 
@@ -34,7 +37,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-#define dataLong 120
+#define dataLong 360
 
 /* USER CODE END PD */
 
@@ -44,9 +47,12 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+I2C_HandleTypeDef hi2c1;
+
 TIM_HandleTypeDef htim1;
 
 UART_HandleTypeDef huart2;
+UART_HandleTypeDef huart3;
 DMA_HandleTypeDef hdma_usart2_rx;
 
 /* USER CODE BEGIN PV */
@@ -59,6 +65,8 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM1_Init(void);
+static void MX_I2C1_Init(void);
+static void MX_USART3_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -113,12 +121,17 @@ float trueAngle;
 float distance[360];
 float angle[360];
 unsigned int distacePosition = 0;
+int flagDataSimilar = 0;
+
+// Normalisasi Data
+float angleToDistance[360];
+short flagNorm = 0;
 
 /************************************* Call Back ******************************/
 
 void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
 {
-  HAL_GPIO_TogglePin(GPIOD,GPIO_PIN_12);
+  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
 }
 
 /************************************* Receiving Data **************************/
@@ -126,11 +139,11 @@ void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	// Get Data
-	for(int i = 0; i < dataLong; i++){
-		logData[i+(pointLog*dataLong)] = ReceiverBuffer[i];
-	}
-	pointLog++;
-	
+//	for(int i = 0; i < dataLong; i++){
+//		logData[i+(pointLog*dataLong)] = ReceiverBuffer[i];
+//	}
+//	pointLog++;
+//	
 	// Scan for Power Information
 	for(int i = 0; i < dataLong; i++){
 		if(flagPower == 0){
@@ -198,6 +211,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		logDataProtocol[k] = ReceiverBuffer[k];
 		if(ReceiverBuffer[k] == 0xAA){
 			if(ReceiverBuffer[k+1] == 0x55){
+				
 				PH[0] = ReceiverBuffer[k];
 				PH[1] = ReceiverBuffer[k+1];
 				CT[0] = ReceiverBuffer[k+2];
@@ -217,42 +231,80 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 				angleEnd = (LSA[0] | LSA[1] << 8) >> 1;
 				angleEnd = (float)angleEnd/64;
 									
-				// Calculate Angle At I Position
-				angleAtIPosition = (float)(((angleEnd - angleStart)/(LSN[0]-1))*(2-1))+angleStart;
-									
-				// Calculate Angle Correction
-				angleCorrectionAtIPosition = atan(21.8*(155.3-distanceBuf)/(155.3*distanceBuf));
-									
-				// Calculate Angle with Correction
-				trueAngle = angleAtIPosition + angleCorrectionAtIPosition;
 				
-				// Get Distance from Data
-				int z = 0;
-				for(int x = 0; x < ((int)LSN[0])*2; x+=2){
-					SI[0] = ReceiverBuffer[k+10+x];
-					SI[1] = ReceiverBuffer[k+11+x];
-					distanceBuf = SI[0] | SI[1] << 8;
-					distanceBuf = (float)distanceBuf/4;
+				// Combine All Data Angle and Distance
+					int z = 0;
+					int y = 0;
+					for(int x = 0; x < ((int)LSN[0])*2; x++){
+						int flag = 0;
+						// filter for Distance to only take data every odd number
+						if( x%2 == 0){
+							SI[0] = ReceiverBuffer[k+10+x];
+							SI[1] = ReceiverBuffer[k+11+x];
+							distanceBuf = SI[0] | SI[1] << 8;
+							distanceBuf = (float)distanceBuf/4;
+							distance[z] = distanceBuf;
+							z++;
+							flag = 1;
+						}
+						
+						if(flag == 1){
+							if(distanceBuf > 0.1){
+								
+								// Reading Next Angle
+								float angleAtIPositionB = (float)(((angleEnd - angleStart)/(((int)LSN[0])-1))*(x-1))+angleStart;
+								float angleCorrectionAtIPositionB = atan(21.8*(155.3-distanceBuf)/(155.3*distanceBuf));
+								angleAtIPositionB = angleAtIPositionB + angleCorrectionAtIPositionB;
+								
+								// Reading Next Distance
+								uint8_t SIB[2];
+								SIB[0] = ReceiverBuffer[k+10+x];
+								SIB[1] = ReceiverBuffer[k+11+x];
+								float distanceBufB = SIB[0] | SIB[1] << 8;
+								distanceBufB = (float)distanceBufB/4;
+								
+								// Reading Flag Similar to Continue if reading the same point
+								if(flagDataSimilar == 1){
+									flagDataSimilar = 0;
+									continue;
+								}	
+								else if((int)angleAtIPosition == (int)angleAtIPositionB){
+									int bufDistance = (distanceBuf + distanceBufB)/2;
+									angleToDistance[(int)angleAtIPosition] = bufDistance;
+									flagDataSimilar = 1;
+								}
+								else{
+									angleToDistance[(int)angleAtIPosition] = distanceBuf;
+								}
+								
+								
+								
+							}
+							flag = 0;
+						}
+						
+						
+						
+						// filter for Angle to only take data along LSN size
+						if( x < ((int)LSN[0])){
+							angleAtIPosition = (float)(((angleEnd - angleStart)/(((int)LSN[0])-1))*(x-1))+angleStart;
+							angleCorrectionAtIPosition = atan(21.8*(155.3-distanceBuf)/(155.3*distanceBuf));
+							angleAtIPosition = angleAtIPosition + angleCorrectionAtIPosition;
+							angle[y] = angleAtIPosition;
+							y++;
+						}
+						
+						
+					}
 					
-					distance[z] = distanceBuf;
-					z++;
-				}
-				
-				// Get Angle from Data
-				z = 0;
-				for(int x = 0; x < ((int)LSN[0]); x++){
-					angleAtIPosition = (float)(((angleEnd - angleStart)/(((int)LSN[0])-1))*(x-1))+angleStart;
-					angleAtIPosition = angleAtIPosition + angleCorrectionAtIPosition;
-					angle[z] = angleAtIPosition;
-					z++;
-				}			
 				}
 			}
 		}
 	}
-	HAL_UART_Receive_DMA(&huart2, ReceiverBuffer, dataLong);
 	
-	// Looking For Header Package
+	
+	HAL_UART_Receive_DMA(&huart2, ReceiverBuffer, dataLong);
+
 }
 
 
@@ -289,14 +341,21 @@ int main(void)
   MX_DMA_Init();
   MX_USART2_UART_Init();
   MX_TIM1_Init();
+  MX_I2C1_Init();
+  MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
 	
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
+	/********************************** Start LCD Function ****************************/
 	
+	if(lcd16x2_i2c_init(&hi2c1)){
+		lcd16x2_i2c_clear();
+	}
+	
+	/********************************** End LCD Function ******************************/
 	
 	/********************************** Start PWM Generator ***************************/
 	
-	TIM1->CCR1 = (35*166667/100);
+	TIM1->CCR1 = (100*166667/100);
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
 	
 	/********************************** End PWM Generator *****************************/
@@ -307,14 +366,50 @@ int main(void)
 	
 	/********************************** End UART Receiver *****************************/
 	
-	
-	
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+		
+//		lcd16x2_i2c_clear();
+//		lcd16x2_i2c_setCursor(0,0);
+//		lcd16x2_i2c_printf("Dist : %f",distance[0]);
+//		lcd16x2_i2c_setCursor(1,0);
+//		lcd16x2_i2c_printf("Angle : %f", angle[0]);
+//		HAL_Delay(500);
+//		flagNorm = 0;
+//		for(int i = 0; i < 40 ; i++){
+//							
+//			// Normalisasi Data
+//			if(distance[i] > 0.1 ){
+//				
+////				char bufTransmit[34];
+//				int bufAngleA = (int) angle[i];
+//				int bufAngleB = (int) angle[i+1];
+//				
+//				if(flagNorm == 1){
+//					flagNorm = 0;
+//					continue;
+//				}
+//				else if(bufAngleA == bufAngleB){
+//					int bufDistance = (distance[i] + distance[i+1])/2;
+//					angleToDistance[bufAngleA] = bufDistance;
+//					flagNorm = 1;
+//				}
+//				else{
+//					angleToDistance[bufAngleA] = distance[i];
+//				}
+//					
+//				sprintf(bufTransmit, "D%d: %.2f || A%d: %d \r\n", i,distance[i], i, bufAngleA);
+//				HAL_UART_Transmit(&huart3, (uint8_t*)bufTransmit, sizeof(bufTransmit), HAL_MAX_DELAY);
+//			}
+//			
+//		}
+		
+		
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -366,6 +461,40 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief I2C1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C1_Init(void)
+{
+
+  /* USER CODE BEGIN I2C1_Init 0 */
+
+  /* USER CODE END I2C1_Init 0 */
+
+  /* USER CODE BEGIN I2C1_Init 1 */
+
+  /* USER CODE END I2C1_Init 1 */
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.ClockSpeed = 100000;
+  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C1_Init 2 */
+
+  /* USER CODE END I2C1_Init 2 */
+
 }
 
 /**
@@ -473,6 +602,39 @@ static void MX_USART2_UART_Init(void)
   /* USER CODE BEGIN USART2_Init 2 */
 
   /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
+  * @brief USART3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART3_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART3_Init 0 */
+
+  /* USER CODE END USART3_Init 0 */
+
+  /* USER CODE BEGIN USART3_Init 1 */
+
+  /* USER CODE END USART3_Init 1 */
+  huart3.Instance = USART3;
+  huart3.Init.BaudRate = 115200;
+  huart3.Init.WordLength = UART_WORDLENGTH_8B;
+  huart3.Init.StopBits = UART_STOPBITS_1;
+  huart3.Init.Parity = UART_PARITY_NONE;
+  huart3.Init.Mode = UART_MODE_TX_RX;
+  huart3.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart3.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART3_Init 2 */
+
+  /* USER CODE END USART3_Init 2 */
 
 }
 

@@ -26,6 +26,8 @@ ydlidar_x2_f407vet\main.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_cor
 ydlidar_x2_f407vet\main.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_flash.h
 ydlidar_x2_f407vet\main.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_flash_ex.h
 ydlidar_x2_f407vet\main.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_flash_ramfunc.h
+ydlidar_x2_f407vet\main.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_i2c.h
+ydlidar_x2_f407vet\main.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_i2c_ex.h
 ydlidar_x2_f407vet\main.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pwr.h
 ydlidar_x2_f407vet\main.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_pwr_ex.h
 ydlidar_x2_f407vet\main.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h
@@ -33,3 +35,7 @@ ydlidar_x2_f407vet\main.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim
 ydlidar_x2_f407vet\main.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h
 ydlidar_x2_f407vet\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\cmath
 ydlidar_x2_f407vet\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
+ydlidar_x2_f407vet\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+ydlidar_x2_f407vet\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
+ydlidar_x2_f407vet\main.o: ../../YDLidar_X2_F407VET/lcd16x2_i2c.h
+ydlidar_x2_f407vet\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
